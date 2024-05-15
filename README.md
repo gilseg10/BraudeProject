@@ -1,8 +1,9 @@
 # MaskGAE: Evaluation of edges readiness using masked graph autoencoders
+Welcome to the repository for our research project on Masked Graph Autoencoders (MaskGAE). This project explores the innovative application of masked autoencoding techniques to graph neural networks, aiming to address the challenges faced by traditional graph autoencoders by incorporating masked graph modeling (MGM).
+
 ![MaskGAE framwork](https://github.com/gilseg10/BraudeProject/assets/157500311/d815c454-4ff2-418f-a2c3-dfd89ec5488f)
 
 ## Summery
-Welcome to the repository for our research project on Masked Graph Autoencoders (MaskGAE). This project explores the innovative application of masked autoencoding techniques to graph neural networks, aiming to address the challenges faced by traditional graph autoencoders by incorporating masked graph modeling (MGM).
 
 Our project explores a new way to enhance how we learn from complex network data using a method called Masked Graph Autoencoding (MaskGAE). Unlike traditional approaches, MaskGAE improves learning by selectively hiding parts of the network (like connections between nodes) and then trying to figure out what was hidden using the remaining visible data.
 
