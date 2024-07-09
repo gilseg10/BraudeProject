@@ -403,7 +403,17 @@ class MaskGAE(nn.Module):
         y = torch.cat([pos_y, neg_y], dim=0)
         y, pred = y.cpu().numpy(), pred.cpu().numpy()
 
-        return roc_auc_score(y, pred), average_precision_score(y, pred)
+        auc_score = roc_auc_score(y, pred)
+        ap_score = average_precision_score(y, pred)
+
+        # Determine which links are correctly predicted
+        threshold = 0.5  # This threshold can be adjusted based on your preference
+        pred_labels = (pred >= threshold).astype(int)
+        correct_predictions = (pred_labels == y).sum()
+        restored_links = (pred_labels[:pos_edge_index.size(1)] == 1).sum()
+
+        # Return the auc score, ap score, number of correct predictions, and number of restored links
+        return auc_score, ap_score, correct_predictions, restored_links
 
     @torch.no_grad()
     def test_step_ogb(self, data, evaluator, 
