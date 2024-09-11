@@ -108,7 +108,7 @@ root = 'data/'
 
 data = get_dataset(root, args.dataset, transform=transform)
 
-train_data, val_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.3,
+train_data, val_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.5,
                                                     is_undirected=True,
                                                     split_labels=True,
                                                     add_negative_train_samples=False)(data)
