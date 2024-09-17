@@ -431,7 +431,7 @@ class MaskGAE(nn.Module):
             link_info.append({'source': source, 'target': target, 'appeared': appeared, 'correct': correct})
 
         # Return the auc score, ap score, number of correct predictions, and number of restored links
-        return auc_score, ap_score, correct_predictions, restored_links
+        return auc_score, ap_score, correct_predictions, restored_links, link_info
 
     @torch.no_grad()
     def test_step_ogb(self, data, evaluator, 
