@@ -65,7 +65,7 @@ def train_linkpred(model, splits, args, device="cpu"):
                                 batch_size=args.batch_size)
         
         if epoch % args.eval_period == 0:
-            valid_auc, valid_ap, valid_correct_pred, valid_restored_links, link_info = model.test_step(valid_data, 
+            valid_auc, valid_ap, valid_correct_pred, valid_restored_links, valid_link_info = model.test_step(valid_data, 
                                                   valid_data.pos_edge_label_index, 
                                                   valid_data.neg_edge_label_index, 
                                                   batch_size=batch_size)
@@ -78,10 +78,10 @@ def train_linkpred(model, splits, args, device="cpu"):
                                            test_data.pos_edge_label_index, 
                                            test_data.neg_edge_label_index, 
                                            batch_size=batch_size)
-            test_auc, test_ap, test_correct_pred, test_restored_links, link_info = test_results
+            test_auc, test_ap, test_correct_pred, test_restored_links, test_link_info = test_results
 
         # After all epochs in a single run, update the statistics once
-        update_statistics(statistics_df, link_info)
+        update_statistics(statistics_df, test_link_info)
         print(f"Run {run} completed and statistics updated.")
 
     # Save the updated statistics at the end of the iteration
