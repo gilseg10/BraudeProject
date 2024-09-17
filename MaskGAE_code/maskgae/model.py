@@ -1,4 +1,5 @@
 import torch
+import pandas as pd
 import torch.nn.functional as F
 import torch.nn as nn
 from torch_geometric.nn import (
@@ -411,6 +412,23 @@ class MaskGAE(nn.Module):
         pred_labels = (pred >= threshold).astype(int)
         correct_predictions = (pred_labels == y).sum()
         restored_links = (pred_labels[:pos_edge_index.size(1)] == 1).sum()
+
+        # Collect link info for each link in the test set
+        link_info = []
+        for i in range(pos_edge_index.size(1)):  # Positive links
+            source = pos_edge_index[0, i].item()
+            target = pos_edge_index[1, i].item()
+            appeared = 1
+            correct = int(pred_labels[i] == 1)
+            link_info.append({'source': source, 'target': target, 'appeared': appeared, 'correct': correct})
+
+        for i in range(neg_edge_index.size(1)):  # Negative links
+            idx = i + pos_edge_index.size(1)
+            source = neg_edge_index[0, i].item()
+            target = neg_edge_index[1, i].item()
+            appeared = 1
+            correct = int(pred_labels[idx] == 0)
+            link_info.append({'source': source, 'target': target, 'appeared': appeared, 'correct': correct})
 
         # Return the auc score, ap score, number of correct predictions, and number of restored links
         return auc_score, ap_score, correct_predictions, restored_links

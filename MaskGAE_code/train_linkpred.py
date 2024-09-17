@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
-
+import pandas as pd
+import os  # For checking if statistics file exists
 import torch
 import torch_geometric.transforms as T
 from tqdm.auto import tqdm
@@ -10,6 +11,37 @@ from maskgae.utils import set_seed, tab_printer, get_dataset
 from maskgae.model import MaskGAE, DegreeDecoder, EdgeDecoder, GNNEncoder, DotEdgeDecoder
 from maskgae.mask import MaskEdge, MaskPath
 
+# Path to the statistics file
+STATS_FILE = "link_statistics.csv"
+
+def load_or_initialize_statistics(data):
+    """Load existing statistics or initialize for the first time."""
+    if os.path.exists(STATS_FILE):
+        print(f"Loading existing statistics from {STATS_FILE}")
+        return pd.read_csv(STATS_FILE)
+    else:
+        # Initialize statistics with each link in the dataset
+        print(f"Initializing new statistics for all links.")
+        edge_index = data.edge_index.cpu().numpy().T  # All edges in the dataset
+        df = pd.DataFrame(edge_index, columns=['source', 'target'])
+        df['appeared_in_test'] = 0  # Number of times it appeared in the test set
+        df['correctly_predicted'] = 0  # Number of times it was predicted correctly
+        df['total_predictions'] = 0  # Total number of predictions made for the link
+        return df
+
+def save_statistics(statistics_df):
+    """Save the updated statistics to a CSV file."""
+    statistics_df.to_csv(STATS_FILE, index=False)
+    print(f"Statistics saved to {STATS_FILE}")
+
+def update_statistics(statistics_df, link_info):
+    """Update the statistics with the results from the current run."""
+    for link in link_info:
+        source, target, appeared, correct = link['source'], link['target'], link['appeared'], link['correct']
+        mask = (statistics_df['source'] == source) & (statistics_df['target'] == target)
+        statistics_df.loc[mask, 'appeared_in_test'] += appeared
+        statistics_df.loc[mask, 'correctly_predicted'] += correct
+        statistics_df.loc[mask, 'total_predictions'] += 1
 
 def train_linkpred(model, splits, args, device="cpu"):
     optimizer = torch.optim.Adam(model.parameters(),
@@ -23,6 +55,9 @@ def train_linkpred(model, splits, args, device="cpu"):
     valid_data = splits['valid'].to(device)
     test_data = splits['test'].to(device)
     
+    # Load or initialize the statistics for links in the dataset
+    statistics_df = load_or_initialize_statistics(test_data)
+
     for epoch in tqdm(range(1, 1 + args.epochs)):
 
         loss = model.train_step(train_data, optimizer,
@@ -39,14 +74,20 @@ def train_linkpred(model, splits, args, device="cpu"):
                 best_epoch = epoch
                 torch.save(model.state_dict(), args.save_path)
 
-    model.load_state_dict(torch.load(args.save_path))
-    test_auc, test_ap, test_correct_pred, test_restored_links = model.test_step(test_data, 
-                                        test_data.pos_edge_label_index, 
-                                        test_data.neg_edge_label_index, 
-                                        batch_size=batch_size)   
-    total_test_set = test_data.pos_edge_label_index.size(1) + test_data.neg_edge_label_index.size(1)
-    total_positive_links = test_data.pos_edge_label_index.size(1)
-    return test_auc, test_ap, test_correct_pred, test_restored_links, total_test_set, total_positive_links
+            test_results = model.test_step(test_data, 
+                                           test_data.pos_edge_label_index, 
+                                           test_data.neg_edge_label_index, 
+                                           batch_size=batch_size)
+            test_auc, test_ap, test_correct_pred, test_restored_links, link_info = test_results
+
+        # After all epochs in a single run, update the statistics once
+        update_statistics(statistics_df, link_info)
+        print(f"Run {run} completed and statistics updated.")
+
+    # Save the updated statistics at the end of the iteration
+    save_statistics(statistics_df)
+
+    return test_auc, test_ap, test_correct_pred, test_restored_links
 
 
 
