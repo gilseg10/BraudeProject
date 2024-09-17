@@ -185,22 +185,18 @@ auc_results = []
 ap_results = []
 correct_pred_results = []
 restored_links_results = []
-total_test_set_sizes = []
-total_positive_links_sizes = []
 
 for run in range(1, args.runs+1):
-    test_auc, test_ap, test_correct_pred, test_restored_links, total_test_set, total_positive_links = train_linkpred(model, splits, args, device=device)
+    test_auc, test_ap, test_correct_pred, test_restored_links = train_linkpred(model, splits, args, device=device)
     auc_results.append(test_auc)
     ap_results.append(test_ap)
     correct_pred_results.append(test_correct_pred)
     restored_links_results.append(test_restored_links)
-    total_test_set_sizes.append(total_test_set)
-    total_positive_links_sizes.append(total_positive_links)
-    print(f'Runs {run} - AUC: {test_auc:.2%}, AP: {test_ap:.2%}, Correct Predictions: {test_correct_pred}/{total_test_set}, Restored Links: {test_restored_links}/{total_positive_links}')   
+    print(f'Run {run} - AUC: {test_auc:.2%}, AP: {test_ap:.2%}, Correct Predictions: {test_correct_pred}, Restored Links: {test_restored_links}')   
 
 print(f'Link Prediction Results ({args.runs} runs):\n'
       f'AUC: {np.mean(auc_results):.2%} ± {np.std(auc_results):.2%}',
       f'AP: {np.mean(ap_results):.2%} ± {np.std(ap_results):.2%}',
-      f'Correct Predictions: {np.mean(correct_pred_results)} ± {np.std(correct_pred_results)} out of {np.mean(total_test_set_sizes)}',
-      f'Restored Links: {np.mean(restored_links_results)} ± {np.std(restored_links_results)} out of {np.mean(total_positive_links_sizes)}',
+      f'Correct Predictions: {np.mean(correct_pred_results)} ± {np.std(correct_pred_results)}',
+      f'Restored Links: {np.mean(restored_links_results)} ± {np.std(restored_links_results)}',
      )
