@@ -83,18 +83,16 @@ def train_linkpred(model, splits, args, device="cpu"):
                                     batch_size=batch_size)
     test_auc, test_ap, test_correct_pred, test_restored_links, test_link_info = test_results
 
-    # Print the link_info to verify its contents
-    print(f"Test Link Info for Run {run}: {test_link_info[:100]}")  # Print the first 10 entries for brevity
-    
-    # # Check if test_link_info was updated
-    # if test_link_info is not None:
-    #     # After all epochs in a single run, update the statistics once
-    #     update_statistics(statistics_df, test_link_info)
-    #     print(f"Run {run} completed and statistics updated.")
-    # else:
-    #     print(f"No test data processed for run {run}.")
+    # Check if test_link_info was updated
+    if test_link_info is not None:
+        # After all epochs in a single run, update the statistics once
+        update_statistics(statistics_df, test_link_info)
+        print(statistics_df.head(100))
+        print(f"Run {run} completed and statistics updated.")
+    else:
+        print(f"No test data processed for run {run}.")
 
-    # # Save the updated statistics at the end of the iteration
+    # Save the updated statistics at the end of the iteration
     # save_statistics(statistics_df)
 
     return test_auc, test_ap, test_correct_pred, test_restored_links
