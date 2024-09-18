@@ -40,19 +40,23 @@ def update_statistics(statistics_df, link_info):
     statistics_df['source'] = statistics_df['source'].astype(np.int64)
     statistics_df['target'] = statistics_df['target'].astype(np.int64)
 
+    print(f"Statistics_df source and target values:\n{statistics_df[['source', 'target']].head()}")
+
     for link in link_info:
         # Explicitly convert the source and target in link_info to int64
         source = np.int64(link['source'])
         target = np.int64(link['target'])
         appeared, correct = link['appeared'], link['correct']
 
+        print(f"Link info source: {source}, target: {target}")
+
         # Handle undirected edges by checking both directions
         mask = ((statistics_df['source'] == source) & (statistics_df['target'] == target)) | \
                ((statistics_df['source'] == target) & (statistics_df['target'] == source))
 
         # Check which rows are being updated
-        print(f"Updating link: source={source}, target={target}, appeared={appeared}, correct={correct}")
-        print(f"Mask result: {mask.sum()} rows matched.")
+        # print(f"Updating link: source={source}, target={target}, appeared={appeared}, correct={correct}")
+        # print(f"Mask result: {mask.sum()} rows matched.")
 
         # Update the corresponding rows in the DataFrame
         statistics_df.loc[mask, 'appeared_in_test'] += appeared
@@ -60,8 +64,8 @@ def update_statistics(statistics_df, link_info):
         statistics_df.loc[mask, 'total_predictions'] += 1
 
     # You can also print the entire DataFrame after all updates (be careful with large DataFrames)
-    print("Updated statistics_df after this run:")
-    print(statistics_df.head(10))  # Adjust the number of rows as needed
+    # print("Updated statistics_df after this run:")
+    # print(statistics_df.head(10))  # Adjust the number of rows as needed
 
 def train_linkpred(model, splits, args, device="cpu"):
     optimizer = torch.optim.Adam(model.parameters(),
