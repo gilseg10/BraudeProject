@@ -44,7 +44,7 @@ def update_statistics(statistics_df, link_info):
         if (exists):
             flag = True
             print(f"Link ({source}, {target}) exists in statistics_df: {exists}")
-    if (!flag):
+    if (flag == False):
         print(f"\n\nNo source and target were recognized in statistics_df")
 
 def train_linkpred(model, splits, args, device="cpu"):
