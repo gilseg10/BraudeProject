@@ -39,9 +39,21 @@ def update_statistics(statistics_df, link_info):
     for link in link_info:
         source, target, appeared, correct = link['source'], link['target'], link['appeared'], link['correct']
         mask = (statistics_df['source'] == source) & (statistics_df['target'] == target)
+        
+        # Check which rows are being updated
+        print(f"Updating link: source={source}, target={target}, appeared={appeared}, correct={correct}")
+        print(f"Mask result: {mask.sum()} rows matched.")
+        
         statistics_df.loc[mask, 'appeared_in_test'] += appeared
         statistics_df.loc[mask, 'correctly_predicted'] += correct
         statistics_df.loc[mask, 'total_predictions'] += 1
+
+        # Print the updated DataFrame (first few rows) after each update
+        print(statistics_df.head())
+
+    # You can also print the entire DataFrame after all updates (be careful with large DataFrames)
+    print("Updated statistics_df after this run:")
+    print(statistics_df.head(10))  # Adjust the number of rows as needed
 
 def train_linkpred(model, splits, args, device="cpu"):
     optimizer = torch.optim.Adam(model.parameters(),
