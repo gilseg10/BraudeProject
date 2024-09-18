@@ -35,37 +35,16 @@ def save_statistics(statistics_df):
     print(f"Statistics saved to {STATS_FILE}")
 
 def update_statistics(statistics_df, link_info):
-    """Update the statistics with the results from the current run."""
-    # Convert source/target in statistics_df to int64 for consistency
-    statistics_df['source'] = statistics_df['source'].astype(np.int64)
-    statistics_df['target'] = statistics_df['target'].astype(np.int64)
-
-    print(f"Statistics_df source and target values:\n{statistics_df[['source', 'target']].head()}")
-
-    for link in link_info:
-        # Explicitly convert the source and target in link_info to int64
-        source = np.int64(link['source'])
-        target = np.int64(link['target'])
-        appeared, correct = link['appeared'], link['correct']
-
-        print(f"Link info source: {source}, target: {target}")
-
-        # Handle undirected edges by checking both directions
-        mask = ((statistics_df['source'] == source) & (statistics_df['target'] == target)) | \
-               ((statistics_df['source'] == target) & (statistics_df['target'] == source))
-
-        # Check which rows are being updated
-        # print(f"Updating link: source={source}, target={target}, appeared={appeared}, correct={correct}")
-        # print(f"Mask result: {mask.sum()} rows matched.")
-
-        # Update the corresponding rows in the DataFrame
-        statistics_df.loc[mask, 'appeared_in_test'] += appeared
-        statistics_df.loc[mask, 'correctly_predicted'] += correct
-        statistics_df.loc[mask, 'total_predictions'] += 1
-
-    # You can also print the entire DataFrame after all updates (be careful with large DataFrames)
-    # print("Updated statistics_df after this run:")
-    # print(statistics_df.head(10))  # Adjust the number of rows as needed
+    # Print the edges in statistics_df where the source or target is one of the nodes 0-9
+    print("Edges from statistics_df where source or target is 0-9:")
+    mask = (statistics_df['source'].isin(range(10))) | (statistics_df['target'].isin(range(10)))
+    print(statistics_df[['source', 'target']][mask])
+    
+    # Print the edges in link_info where the source or target is 0-9
+    print("\nEdges from link_info where source or target is 0-9:")
+    for i, link in enumerate(link_info):
+        if link['source'] in range(10) or link['target'] in range(10):
+            print(f"Link {i}: source={link['source']}, target={link['target']}")
 
 def train_linkpred(model, splits, args, device="cpu"):
     optimizer = torch.optim.Adam(model.parameters(),
