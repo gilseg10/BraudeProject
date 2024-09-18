@@ -36,26 +36,32 @@ def save_statistics(statistics_df):
 
 def update_statistics(statistics_df, link_info):
     """Update the statistics with the results from the current run."""
-    print(f"Data types in link_info: source={type(link_info[0]['source'])}, target={type(link_info[0]['target'])}")
-    print(f"Data types in statistics_df: source={statistics_df['source'].dtype}, target={statistics_df['target'].dtype}")
-    # for link in link_info:
-    #     source, target, appeared, correct = link['source'], link['target'], link['appeared'], link['correct']
-    #     mask = (statistics_df['source'] == source) & (statistics_df['target'] == target)
-        
-    #     # Check which rows are being updated
-    #     print(f"Updating link: source={source}, target={target}, appeared={appeared}, correct={correct}")
-    #     print(f"Mask result: {mask.sum()} rows matched.")
-        
-    #     statistics_df.loc[mask, 'appeared_in_test'] += appeared
-    #     statistics_df.loc[mask, 'correctly_predicted'] += correct
-    #     statistics_df.loc[mask, 'total_predictions'] += 1
+    for link in link_info:
+        # Explicitly convert the source and target in link_info to int64
+        source = np.int64(link['source'])
+        target = np.int64(link['target'])
+        appeared, correct = link['appeared'], link['correct']
 
-    #     # Print the updated DataFrame (first few rows) after each update
-    #     print(statistics_df.head())
+        # Handle undirected edges by checking both directions
+        mask = ((statistics_df['source'] == source) & (statistics_df['target'] == target)) | \
+               ((statistics_df['source'] == target) & (statistics_df['target'] == source))
 
-    # # You can also print the entire DataFrame after all updates (be careful with large DataFrames)
-    # print("Updated statistics_df after this run:")
-    # print(statistics_df.head(10))  # Adjust the number of rows as needed
+        # Check which rows are being updated
+        print(f"Updating link: source={source}, target={target}, appeared={appeared}, correct={correct}")
+        print(f"Mask result: {mask.sum()} rows matched.")
+
+        # Update the corresponding rows in the DataFrame
+        statistics_df.loc[mask, 'appeared_in_test'] += appeared
+        statistics_df.loc[mask, 'correctly_predicted'] += correct
+        statistics_df.loc[mask, 'total_predictions'] += 1
+        
+        # Print the updated DataFrame (first few rows) after each update
+        print(statistics_df.head())
+
+    # You can also print the entire DataFrame after all updates (be careful with large DataFrames)
+    print("Updated statistics_df after this run:")
+    print(statistics_df.head(10))  # Adjust the number of rows as needed
+
 
 def train_linkpred(model, splits, args, device="cpu"):
     optimizer = torch.optim.Adam(model.parameters(),
