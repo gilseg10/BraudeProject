@@ -76,11 +76,12 @@ def train_linkpred(model, splits, args, device="cpu"):
                 best_epoch = epoch
                 torch.save(model.state_dict(), args.save_path)
 
-            test_results = model.test_step(test_data, 
-                                           test_data.pos_edge_label_index, 
-                                           test_data.neg_edge_label_index, 
-                                           batch_size=batch_size)
-            test_auc, test_ap, test_correct_pred, test_restored_links, test_link_info = test_results
+    model.load_state_dict(torch.load(args.save_path))
+    test_results = model.test_step(test_data, 
+                                    test_data.pos_edge_label_index, 
+                                    test_data.neg_edge_label_index, 
+                                    batch_size=batch_size)
+    test_auc, test_ap, test_correct_pred, test_restored_links, test_link_info = test_results
 
     # Check if test_link_info was updated
     if test_link_info is not None:
