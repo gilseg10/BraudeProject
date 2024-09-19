@@ -14,7 +14,7 @@ from maskgae.mask import MaskEdge, MaskPath
 # Path to the statistics file
 STATS_FILE = "link_statistics.csv"
 
-def load_or_initialize_statistics(train_data, valid_data, test_data):
+def load_or_initialize_statistics(train_data, test_data):
     """Load existing statistics or initialize for the first time."""
     if os.path.exists(STATS_FILE):
         print(f"Loading existing statistics from {STATS_FILE}")
@@ -23,13 +23,13 @@ def load_or_initialize_statistics(train_data, valid_data, test_data):
         # Initialize statistics with all links from train, valid, test positive, and test negative edges
         print(f"Initializing new statistics for all links.")
         
-        # Combine edges from train, validation, and test sets (positive and negative)
-        edge_index_train_valid = torch.cat([train_data.edge_index, valid_data.edge_index], dim=1)
+        # Combine edges from train and test sets (positive and negative)
+        edge_index_train = train_data.edge_index
         edge_index_test_pos = test_data.pos_edge_label_index
         edge_index_test_neg = test_data.neg_edge_label_index
         
         # Combine all the edges into a single tensor
-        edge_index = torch.cat([edge_index_train_valid, edge_index_test_pos, edge_index_test_neg], dim=1)
+        edge_index = torch.cat([edge_index_train, edge_index_test_pos, edge_index_test_neg], dim=1)
         edge_index = edge_index.cpu().numpy().T  # Convert to NumPy and transpose
         
         # Create DataFrame
@@ -79,7 +79,7 @@ def train_linkpred(model, splits, args, device="cpu"):
     test_data = splits['test'].to(device)
     
     # Load or initialize the statistics for links in the dataset
-    statistics_df = load_or_initialize_statistics(train_data, valid_data, test_data)
+    statistics_df = load_or_initialize_statistics(train_data, test_data)
 
     test_link_info = None  # Initialize before the epoch loop
 
