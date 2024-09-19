@@ -46,16 +46,25 @@ def save_statistics(statistics_df):
     print(f"Statistics saved to {STATS_FILE}")
 
 def update_statistics(statistics_df, link_info):
-    # Print the edges in statistics_df where the source or target is one of the nodes 0-9
-    print("Edges from statistics_df where source or target is 0-2:")
-    mask = (statistics_df['source'].isin(range(3))) | (statistics_df['target'].isin(range(3)))
-    print(statistics_df[['source', 'target']][mask])
-    
-    # Print the edges in link_info where the source or target is 0-9
-    print("\nEdges from link_info where source or target is 0-2:")
-    for i, link in enumerate(link_info):
-        if link['source'] in range(3) or link['target'] in range(3):
-            print(f"Link {i}: source={link['source']}, target={link['target']}")
+    # Convert source/target in statistics_df to int64 for consistency
+    statistics_df['source'] = statistics_df['source'].astype(np.int64)
+    statistics_df['target'] = statistics_df['target'].astype(np.int64)
+
+    # Iterate through the links and apply the update logic (keeping the rest of the function intact)
+    for link in link_info:
+        # Explicitly convert the source and target in link_info to int64
+        source = np.int64(link['source'])
+        target = np.int64(link['target'])
+        appeared, correct = link['appeared'], link['correct']
+
+        # Handle undirected edges by checking both directions
+        mask = ((statistics_df['source'] == source) & (statistics_df['target'] == target)) | \
+               ((statistics_df['source'] == target) & (statistics_df['target'] == source))
+
+        # Update the corresponding rows in the DataFrame
+        statistics_df.loc[mask, 'appeared_in_test'] += appeared
+        statistics_df.loc[mask, 'correctly_predicted'] += correct
+        statistics_df.loc[mask, 'total_predictions'] += 1
 
 def train_linkpred(model, splits, args, device="cpu"):
     optimizer = torch.optim.Adam(model.parameters(),
@@ -101,13 +110,12 @@ def train_linkpred(model, splits, args, device="cpu"):
     if test_link_info is not None:
         # After all epochs in a single run, update the statistics once
         update_statistics(statistics_df, test_link_info)
-        # print(statistics_df.head(100))
         print(f"Run {run} completed and statistics updated.")
     else:
         print(f"No test data processed for run {run}.")
 
     # Save the updated statistics at the end of the iteration
-    # save_statistics(statistics_df)
+    save_statistics(statistics_df)
 
     return test_auc, test_ap, test_correct_pred, test_restored_links
 
