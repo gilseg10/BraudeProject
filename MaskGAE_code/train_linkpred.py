@@ -20,11 +20,16 @@ def load_or_initialize_statistics(train_data, valid_data, test_data):
         print(f"Loading existing statistics from {STATS_FILE}")
         return pd.read_csv(STATS_FILE)
     else:
-        # Initialize statistics with all links from train, valid, and test sets
+        # Initialize statistics with all links from train, valid, test positive, and test negative edges
         print(f"Initializing new statistics for all links.")
         
-        # Combine edges from train, validation, and test sets
-        edge_index = torch.cat([train_data.edge_index, valid_data.edge_index, test_data.edge_index], dim=1)
+        # Combine edges from train, validation, and test sets (positive and negative)
+        edge_index_train_valid = torch.cat([train_data.edge_index, valid_data.edge_index], dim=1)
+        edge_index_test_pos = test_data.pos_edge_label_index
+        edge_index_test_neg = test_data.neg_edge_label_index
+        
+        # Combine all the edges into a single tensor
+        edge_index = torch.cat([edge_index_train_valid, edge_index_test_pos, edge_index_test_neg], dim=1)
         edge_index = edge_index.cpu().numpy().T  # Convert to NumPy and transpose
         
         # Create DataFrame
@@ -34,6 +39,7 @@ def load_or_initialize_statistics(train_data, valid_data, test_data):
         df['total_predictions'] = 0  # Total number of predictions made for the link
         return df
 
+
 def save_statistics(statistics_df):
     """Save the updated statistics to a CSV file."""
     statistics_df.to_csv(STATS_FILE, index=False)
@@ -41,14 +47,14 @@ def save_statistics(statistics_df):
 
 def update_statistics(statistics_df, link_info):
     # Print the edges in statistics_df where the source or target is one of the nodes 0-9
-    print("Edges from statistics_df where source or target is 0-9:")
-    mask = (statistics_df['source'].isin(range(10))) | (statistics_df['target'].isin(range(10)))
+    print("Edges from statistics_df where source or target is 0-2:")
+    mask = (statistics_df['source'].isin(range(3))) | (statistics_df['target'].isin(range(3)))
     print(statistics_df[['source', 'target']][mask])
     
     # Print the edges in link_info where the source or target is 0-9
-    print("\nEdges from link_info where source or target is 0-9:")
+    print("\nEdges from link_info where source or target is 0-2:")
     for i, link in enumerate(link_info):
-        if link['source'] in range(10) or link['target'] in range(10):
+        if link['source'] in range(3) or link['target'] in range(3):
             print(f"Link {i}: source={link['source']}, target={link['target']}")
 
 def train_linkpred(model, splits, args, device="cpu"):
