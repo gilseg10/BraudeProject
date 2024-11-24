@@ -165,7 +165,8 @@ def train_linkpred(model, splits, args, device="cpu"):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora)")
+parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora) 'Custom' for custom dataset")
+parser.add_argument("--custom_dataset_path", nargs="?", default="", help="Path to the custom dataset CSV file (required for Custom dataset).")
 parser.add_argument("--mask", nargs="?", default="Path", help="Masking stractegy, `Path`, `Edge` or `None` (default: Path)")
 parser.add_argument('--seed', type=int, default=2022, help='Random seed for model and dataset. (default: 2022)')
 
@@ -220,7 +221,7 @@ transform = T.Compose([
 root = 'data/'
 ########################################################################
 
-data = get_dataset(root, args.dataset, transform=transform)
+data = get_dataset(root, args.dataset, transform=transform, custom_path=args.custom_dataset_path)
 
 train_data, val_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.3,
                                                     is_undirected=True,

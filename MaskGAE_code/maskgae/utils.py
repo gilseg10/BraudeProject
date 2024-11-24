@@ -3,6 +3,7 @@ import os
 import torch
 import random
 import numpy as np
+import pandas as pd
 from texttable import Texttable
 import torch_geometric.transforms as T
 from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit
@@ -20,7 +21,19 @@ def set_seed(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.enabled = False
 
-def get_dataset(root: str, name: str, transform=None) -> Data:
+def get_dataset(root: str, name: str, transform=None, custom_path: str = None) -> Data:
+    """
+    Get a graph dataset, supporting built-in and custom datasets.
+
+    Args:
+        root (str): Root directory for datasets.
+        name (str): Name of the dataset (e.g., 'Cora', 'Custom').
+        transform (callable, optional): Transformation to apply to the dataset.
+        custom_path (str, optional): Path to the custom dataset CSV file (used only for 'Custom').
+
+    Returns:
+        Data: PyTorch Geometric Data object.
+    """
     if name in {'arxiv', 'products', 'mag'}:
         from ogb.nodeproppred import PygNodePropPredDataset
         print('loading ogb dataset...')
@@ -59,10 +72,45 @@ def get_dataset(root: str, name: str, transform=None) -> Data:
         dataset = Coauthor(root, name)
         data = transform(dataset[0])
         data = T.RandomNodeSplit(num_val=0.1, num_test=0.8)(data)
+    elif name == 'Custom': 
+        if not custom_path:
+            raise ValueError("Custom dataset selected but no 'custom_path' provided.")
+        csv_path = os.path.join(root, custom_path)  # Use the custom dataset path
+        print(f"Loading custom dataset from {csv_path}...")
+        data = load_custom_dataset(csv_path)  # Load the custom dataset
+        if transform:
+            data = transform(data)  # Apply transformations if provided
     else:
-        raise ValueError(name)
+        raise ValueError(f"Unsupported dataset name: {name}")
     return data
-    
+
+def load_custom_dataset(csv_path: str) -> Data:
+    """
+    Load a custom dataset from a CSV file and preprocess it into a PyTorch Geometric Data object.
+    Args:
+        csv_path (str): Path to the CSV file containing the dataset.
+    Returns:
+        Data: PyTorch Geometric Data object containing the graph structure, node features, and labels.
+    """
+    # Load the dataset from the CSV file
+    df = pd.read_csv(csv_path)
+
+    # Extract edges (source and target nodes)
+    edge_index = torch.tensor(df[['source', 'target']].values.T, dtype=torch.long)
+
+    # Extract node features (assuming feature columns are feature_1 and feature_2)
+    node_features = df[['feature_1', 'feature_2']].values
+    x = torch.tensor(node_features, dtype=torch.float)
+
+    # Extract labels
+    labels = df['label'].values
+    y = torch.tensor(labels, dtype=torch.long)
+
+    # Create a PyTorch Geometric Data object
+    data = Data(x=x, edge_index=edge_index, y=y)
+
+    return data
+
 def tab_printer(args):
     """Function to print the logs in a nice tabular format.
 
