@@ -392,42 +392,73 @@ class MaskGAE(nn.Module):
 
     @torch.no_grad()
     def test_step(self, data, pos_edge_index, neg_edge_index, batch_size=2**16):
+        """
+        Evaluate the model on a test set, calculating performance metrics and collecting link-specific information.
+
+        Args:
+            data (Data): The test graph data containing node features and edge indices.
+            pos_edge_index (torch.Tensor): Edge indices representing the positive test links.
+            neg_edge_index (torch.Tensor): Edge indices representing the negative test links.
+            batch_size (int, optional): The batch size for predictions. Defaults to 2**16.
+
+        Returns:
+            float: AUC (Area Under the Curve) score for link prediction.
+            float: AP (Average Precision) score for link prediction.
+            int: Total number of correctly predicted links.
+            int: Number of restored positive links (correctly predicted as present).
+            list of dict: Detailed statistics for each link in the test set, including:
+                - 'source': Source node ID.
+                - 'target': Target node ID.
+                - 'appeared': Whether the link appeared in the test set (always 1 for test links).
+                - 'correct': Whether the link was correctly predicted.
+        """
+        # Set the model to evaluation mode
         self.eval()
+
+        # Encode the node representations (z) based on the graph structure and features
         z = self(data.x, data.edge_index)
+        
+        # Predict the scores for positive and negative edges
         pos_pred = self.batch_predict(z, pos_edge_index)
         neg_pred = self.batch_predict(z, neg_edge_index)
 
+        # Concatenate all predictions and create ground-truth labels
         pred = torch.cat([pos_pred, neg_pred], dim=0)
         pos_y = pos_pred.new_ones(pos_pred.size(0))
         neg_y = neg_pred.new_zeros(neg_pred.size(0))
-
         y = torch.cat([pos_y, neg_y], dim=0)
+
+        # Convert predictions and labels to NumPy for metric calculation
         y, pred = y.cpu().numpy(), pred.cpu().numpy()
 
+        # Calculate AUC and AP scores
         auc_score = roc_auc_score(y, pred)
         ap_score = average_precision_score(y, pred)
 
         # Determine which links are correctly predicted
-        threshold = 0.5  # This threshold can be adjusted based on your preference
-        pred_labels = (pred >= threshold).astype(int)
-        correct_predictions = (pred_labels == y).sum()
-        restored_links = (pred_labels[:pos_edge_index.size(1)] == 1).sum()
+        threshold = 0.5  # Default threshold for binary classification
+        pred_labels = (pred >= threshold).astype(int) # Convert scores to binary predictions
+        correct_predictions = (pred_labels == y).sum() # Total number of correct predictions
+        restored_links = (pred_labels[:pos_edge_index.size(1)] == 1).sum() # Correct positive predictions
 
         # Collect link info for each link in the test set
         link_info = []
-        for i in range(pos_edge_index.size(1)):  # Positive links
-            source = pos_edge_index[0, i].item()
-            target = pos_edge_index[1, i].item()
-            appeared = 1
-            correct = int(pred_labels[i] == 1)
+
+        # Iterate over positive links in the test set
+        for i in range(pos_edge_index.size(1)):  
+            source = pos_edge_index[0, i].item() # Source node ID
+            target = pos_edge_index[1, i].item() # Target node ID
+            appeared = 1 # This link appeared in the test set
+            correct = int(pred_labels[i] == 1) # Whether the link was correctly predicted as positive
             link_info.append({'source': source, 'target': target, 'appeared': appeared, 'correct': correct})
 
-        for i in range(neg_edge_index.size(1)):  # Negative links
-            idx = i + pos_edge_index.size(1)
-            source = neg_edge_index[0, i].item()
-            target = neg_edge_index[1, i].item()
-            appeared = 1
-            correct = int(pred_labels[idx] == 0)
+        # Iterate over negative links in the test set
+        for i in range(neg_edge_index.size(1)):  
+            idx = i + pos_edge_index.size(1) # Index offset for negative links
+            source = neg_edge_index[0, i].item() # Source node ID
+            target = neg_edge_index[1, i].item() # Target node ID
+            appeared = 1 # This link appeared in the test set
+            correct = int(pred_labels[idx] == 0) # Whether the link was correctly predicted as negative
             link_info.append({'source': source, 'target': target, 'appeared': appeared, 'correct': correct})
 
         # Return the auc score, ap score, number of correct predictions, and number of restored links

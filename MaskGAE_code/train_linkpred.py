@@ -15,7 +15,17 @@ from maskgae.mask import MaskEdge, MaskPath
 STATS_FILE = "link_statistics.csv"
 
 def load_or_initialize_statistics(train_data, valid_data, test_data):
-    """Load existing statistics or initialize for the first time."""
+    """
+    Load existing statistics from a file or initialize a new DataFrame to track statistics for all links.
+    
+    Args:
+        train_data (Data): Training data containing edge indices.
+        valid_data (Data): Validation data containing edge indices.
+        test_data (Data): Testing data containing positive and negative edge indices.
+    
+    Returns:
+        pandas.DataFrame: A DataFrame containing source and target nodes, as well as statistical counters.
+    """
     if os.path.exists(STATS_FILE):
         print(f"Loading existing statistics from {STATS_FILE}")
         return pd.read_csv(STATS_FILE)
@@ -41,16 +51,32 @@ def load_or_initialize_statistics(train_data, valid_data, test_data):
 
 
 def save_statistics(statistics_df):
-    """Save the updated statistics to a CSV file."""
+    """
+    Save the updated statistics DataFrame to a CSV file.
+
+    Args:
+        statistics_df (pandas.DataFrame): The DataFrame containing updated link statistics.
+    """
     statistics_df.to_csv(STATS_FILE, index=False)
     print(f"Statistics saved to {STATS_FILE}")
 
 def update_statistics(statistics_df, link_info):
+    """
+    Update the statistics for each link based on the current run's test results.
+
+    Args:
+        statistics_df (pandas.DataFrame): The existing statistics DataFrame.
+        link_info (list of dict): A list containing link information with keys:
+            - 'source': Source node ID
+            - 'target': Target node ID
+            - 'appeared': Number of times the link appeared in the test set (usually 1).
+            - 'correct': Whether the link was predicted correctly (1 for correct, 0 otherwise).
+    """
     # Convert source/target in statistics_df to int64 for consistency
     statistics_df['source'] = statistics_df['source'].astype(np.int64)
     statistics_df['target'] = statistics_df['target'].astype(np.int64)
 
-    # Iterate through the links and apply the update logic (keeping the rest of the function intact)
+    # Iterate over all links in the current test set
     for link in link_info:
         # Explicitly convert the source and target in link_info to int64
         source = np.int64(link['source'])
@@ -61,12 +87,25 @@ def update_statistics(statistics_df, link_info):
         mask = ((statistics_df['source'] == source) & (statistics_df['target'] == target)) | \
                ((statistics_df['source'] == target) & (statistics_df['target'] == source))
 
-        # Update the corresponding rows in the DataFrame
+        # Update counters (for the matching link) that corresponds rows in the DataFrame
         statistics_df.loc[mask, 'appeared_in_test'] += appeared
         statistics_df.loc[mask, 'correctly_predicted'] += correct
         statistics_df.loc[mask, 'total_predictions'] += 1
 
 def train_linkpred(model, splits, args, device="cpu"):
+    """
+    Train and evaluate the link prediction model.
+
+    Args:
+        model (Model): The MaskGAE model to train and evaluate.
+        splits (dict): A dictionary containing train, valid, and test data splits.
+        args (Namespace): Command-line arguments for training configuration.
+        device (str): The device to use ('cpu' or 'cuda').
+    
+    Returns:
+        Tuple: Test AUC, AP, correct predictions, and restored links.
+    """
+    # Initialize optimizer with learning rate and weight decay
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.lr,
                                  weight_decay=args.weight_decay)
@@ -74,6 +113,7 @@ def train_linkpred(model, splits, args, device="cpu"):
     best_valid = 0
     batch_size = args.batch_size
     
+    # Load data splits onto the specified device
     train_data = splits['train'].to(device)
     valid_data = splits['valid'].to(device)
     test_data = splits['test'].to(device)
@@ -84,21 +124,24 @@ def train_linkpred(model, splits, args, device="cpu"):
     test_link_info = None  # Initialize before the epoch loop
 
     for epoch in tqdm(range(1, 1 + args.epochs)):
-
+        # Perform one training step
         loss = model.train_step(train_data, optimizer,
                                 alpha=args.alpha, 
                                 batch_size=args.batch_size)
         
+        # Evaluate on validation data periodically
         if epoch % args.eval_period == 0:
             valid_auc, valid_ap, valid_correct_pred, valid_restored_links, valid_link_info = model.test_step(valid_data, 
                                                   valid_data.pos_edge_label_index, 
                                                   valid_data.neg_edge_label_index, 
                                                   batch_size=batch_size)
+            # Save the model if validation performance improves
             if valid_auc > best_valid:
                 best_valid = valid_auc
                 best_epoch = epoch
                 torch.save(model.state_dict(), args.save_path)
 
+    # Load the best model and evaluate on the test set
     model.load_state_dict(torch.load(args.save_path))
     test_results = model.test_step(test_data, 
                                     test_data.pos_edge_label_index, 
@@ -106,7 +149,7 @@ def train_linkpred(model, splits, args, device="cpu"):
                                     batch_size=batch_size)
     test_auc, test_ap, test_correct_pred, test_restored_links, test_link_info = test_results
 
-    # Check if test_link_info was updated
+    # Update statistics based on the test run
     if test_link_info is not None:
         # After all epochs in a single run, update the statistics once
         update_statistics(statistics_df, test_link_info)
